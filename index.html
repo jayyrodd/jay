@@ -109,6 +109,9 @@ body.in .col > :nth-child(4) { animation-delay: .3s; } body.in .col > :nth-child
 .play svg { width: 24px; height: 24px; fill: #000; }
 .amLogo { position: absolute; top: 16px; right: 16px; width: 30px; height: 30px; }
 .prog { position: absolute; left: 0; bottom: 0; height: 3px; width: 0; background: #fa2d48; transition: width .25s linear; }
+.vol { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 12px; color: rgba(255,255,255,.7); }
+.vol input { flex: 1; min-width: 0; accent-color: #fa2d48; }
+.vol output { min-width: 36px; text-align: right; font-variant-numeric: tabular-nums; }
 .eq { display: none; gap: 3px; align-items: flex-end; height: 18px; } .am.playing .eq { display: flex; }
 .eq i { width: 3px; background: #fa2d48; animation: eq .8s ease-in-out infinite; }
 .eq i:nth-child(2) { animation-delay: .15s; } .eq i:nth-child(3) { animation-delay: .3s; } .eq i:nth-child(4) { animation-delay: .45s; }
@@ -208,6 +211,7 @@ body.in .col > :nth-child(4) { animation-delay: .3s; } body.in .col > :nth-child
             <button class="play" id="play" aria-label="Play preview"><svg viewBox="0 0 24 24"><path d="M7 4v16l13-8z"/></svg></button>
           </div>
         </div>
+        <label class="vol">Music <input id="vol" type="range" min="0" max="100" step="1" value="50" aria-label="Music volume"><output id="volOut">50%</output></label>
       </div>
       <svg class="amLogo" viewBox="0 0 30 30" aria-label="Apple Music"><defs><linearGradient id="amg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fb5c74"/><stop offset="1" stop-color="#fa233b"/></linearGradient></defs><rect width="30" height="30" rx="7" fill="url(#amg)"/><path d="M20.5 7.2 12 9v10.4a2.8 2.8 0 1 0 1.6 2.5v-8.6l5.4-1.1v5.8a2.8 2.8 0 1 0 1.6 2.5V7.2z" fill="#fff"/></svg>
       <div class="prog" id="prog"></div>
@@ -382,7 +386,26 @@ function loadSong() {
   sc.onerror = () => delete window[cb];
   document.head.appendChild(sc);
 }
-$("audio").volume = 0.6;
+/* volume slider (starts at half) and a fade loop: the song fades in at the start and out at the end,
+   then repeats, so it never cuts off or stops after one play */
+const audio = $("audio");
+let base = 0.5;
+audio.loop = true;
+function fadeLevel() {
+  const d = audio.duration, t = audio.currentTime;
+  if (!d || !isFinite(d)) return 1;
+  return Math.max(0, Math.min(1, t / 1.2, (d - t) / 1.5));
+}
+function paintVol() { audio.volume = base * fadeLevel(); }
+audio.addEventListener("timeupdate", paintVol);
+$("vol").value = Math.round(base * 100);
+$("volOut").textContent = $("vol").value + "%";
+$("vol").addEventListener("input", (e) => {
+  base = e.target.value / 100;
+  $("volOut").textContent = e.target.value + "%";
+  paintVol();
+});
+paintVol();
 
 /* click to enter: also starts the song, like your guns.lol page */
 function enter() {
